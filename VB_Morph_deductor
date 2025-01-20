@@ -1,0 +1,651 @@
+'
+'VAROVANIE: Pri zadani viet, qbasic nedovoluje pouzitie ciarok (,) ani diakritiky
+
+
+DIM veta$(1 TO 500)          'veta$(x) je kazda z nekonecnych viet
+DIM q(1 TO 50)               'q(x) pri linii 70 pomoze urcit premennu "max"
+DIM koren$(1 TO 100)         'koren$(x) je kazdy z najdenych korenov
+LET ciskoren = 1
+
+
+LET c = 1: LET maxc = 1
+DIM de$(50): DIM de(50)
+DIM pam$(100)
+
+LET brzda = 0:    'ak brzda = 2 zastavuje vytvarania korenov a oznacuje, ze
+'veta sa skoncila. Pri vytvarani vety vzor, brzda = 0, pri dalsich vetach,
+' brzda = 1. Brzda spocita kolko chr$(42) je
+
+CLS
+
+'LET k = 0                    ' k rata kolko je  korenov
+LET l = 0
+3 LET l = l + 1
+4 INPUT "Zadajte nekonecnu vetu: "; veta$(l)
+
+5 'vyhadzujeme medzery
+
+FOR i = 1 TO LEN(veta$(l))
+        IF MID$(veta$(l), i, 1) = " " THEN LET veta1$ = MID$(veta$(l), 1, (i - 1)): LET veta2$ = MID$(veta$(l), (i + 1), (LEN(veta$(l)) - i)): LET veta$(l) = veta1$ + veta2$: GOTO 5
+NEXT i
+PRINT "X"; veta$(l); "X"
+' Filter 1:   najde rovnake pismena = znaky
+
+FOR i = 1 TO LEN(veta$(l)) / 2
+     FOR j = i + 1 TO LEN(veta$(l))
+         IF MID$(veta$(l), i, 1) = MID$(veta$(l), j, 1) THEN GOSUB 10
+         a$ = INKEY$: IF a$ = "q" THEN END
+     NEXT j
+NEXT i
+PRINT "zadana retaz nie je nekonecna"
+END
+10 LET pocet = (LEN(veta$(l)) - (i - 1)) / (j - i)
+IF pocet < 2 THEN RETURN
+LET pocet = INT(pocet)
+FOR k = 1 TO pocet
+        IF MID$(veta$(l), i, j - i) <> MID$(veta$(l), i + ((j - i) * (pocet - 1)), j - i) THEN RETURN
+NEXT k
+IF LEN(veta$(l)) = (i - 1) + ((j - i) * pocet) THEN LET chvost = 0: GOTO 30
+
+20 IF MID$(veta$(l), i, LEN(veta$(l)) - ((i - 1) + (j - i) * pocet)) <> MID$(veta$(l), i + (j - i) * pocet, LEN(veta$(l)) - ((i - 1) + (j - i) * pocet)) THEN RETURN
+LET chvost = LEN(veta$(l)) - ((i - 1) + (j - i) * pocet)
+
+
+' Iba podciarkuje opakovane retaze. Je to pekny output.
+
+30 LET spanielcina = i
+
+CLS
+LET perioda = j - i
+LET vetb$ = LEFT$(veta$(l), 79)
+LOCATE 1, 1: PRINT vetb$
+LET d = 0
+50 LET c = i + perioda * d
+LOCATE 2, c: PRINT CHR$(16)
+FOR b = 1 TO perioda
+     IF c + b >= 79 THEN PRINT "Veta je pridlha. Neukazem celu schemu": GOTO 60
+     LOCATE 2, c + b: PRINT "-"
+     IF c + b >= LEN(veta$(l)) AND chvost = 0 OR c + b >= 79 AND chvost = 0 THEN GOTO 60
+     IF c + b >= LEN(veta$(l)) AND chvost > 0 OR c + b >= 79 AND chvost > 0 THEN LOCATE 2, i + ((j - i) * pocet): PRINT CHR$(16): GOTO 60
+NEXT b
+LET d = d + 1: GOTO 50
+END
+
+60 LET perioda$ = MID$(veta$(l), i, j - i): PRINT "PERIODA: "; perioda$
+
+' ---------------------------------------------------------------
+
+' PRAVIDLO: "V nekonecnej vete, cast nachadzajuca sa pred periodou je podmetom vety"
+' Tu zacina dalsia cast programu. Uz vieme aka je perioda. Ak mame aj
+' konecnu cast, mozeme rozlisit podmet nekonecnej vety.
+' Teraz program definuje "podmet$" podla uvedeneho pravidla a hlada prve
+' pismeno podmetu, ktore sa opakuje v periode.
+
+LET podmet = i - 1
+LET podmet$ = MID$(veta$(l), 1, podmet)
+FOR i = 1 TO perioda
+     IF MID$(perioda$, i, 1) = LEFT$(podmet$, 1) THEN GOSUB 70
+NEXT i
+GOTO 80
+
+' Hlada dalsie pismena, ktore sa opakuju aj v podmete, aj v periode.
+
+END
+70  LET q(i) = 0
+IF pozormax = 0 THEN LET max = 0
+FOR j = 1 TO podmet
+     IF MID$(perioda$, i + (j - 1), 1) = MID$(podmet$, j, 1) THEN LET q(i) = q(i) + 1: LET pozormax = 1 ELSE RETURN
+     IF q(i) > max THEN LET max = q(i)
+NEXT j
+RETURN
+
+80 ' Urcuje aky je koren podmetu
+
+LET podmet$ = LEFT$(podmet$, max): LET pozormax = 0
+LET podmet = LEN(podmet$)
+'POZOR: Spanielcina, anglictina: tento IF kontroluje, ci cast, ktora sa
+'neopakuje, naozaj sa neopakuje. Po slovensky sa opakuje, po SP a AN nie.
+IF podmet <> spanielcina - 1 THEN PRINT "80 Prva cast sa neopakuje. Veta, ak je po slovensky, nie je spravne zadana.": END
+90 'PRAVIDLO: "V nekonečnej vete to, co sa v periode nachadza za korenom podmetu,
+' je vztazne zameno".
+' Urcuje ake je vztazne zameno, ale podla uvedeneho pravidla aj koncovka,
+' ktoru ma v periode koren podmetu, bude povazovana za cast vztazneho zamena.
+' Az potom, ked porovname tuto vetu s inymi bude mozne najst koren zamena.
+
+LET i = 0
+95 IF MID$(perioda$, (perioda - podmet) - i, podmet) = podmet$ THEN LET vztazne$ = MID$(perioda$, (perioda - i), perioda - (perioda - i) + 1): LET vztazne = LEN(vztazne$): GOTO 130
+LET i = i + 1
+GOTO 95
+
+130 ' PRAVIDLO: "V nekonecnej vete to, co sa v periode nachadza pred korenom
+' podmetu, je sloveso".
+' Program urcuje ake je sloveso podla tohoto pravidla.
+140 '
+FOR j = 1 TO LEN(perioda$)
+     IF podmet$ = MID$(perioda$, j, LEN(podmet$)) THEN LET sloveso$ = MID$(perioda$, 1, j - 1): GOTO 150
+NEXT j
+GOTO 140
+150 '
+LET sloveso = LEN(sloveso$)
+IF sloveso$ = "" OR sloveso$ = " " THEN PRINT "retaz nekoresponduje so strukturou 121"
+PRINT
+IF sloveso$ = "" OR podmet$ = "" OR vztazne$ = "" THEN PRINT "Tato veta bud je agramaticka alebo je konecna"
+PRINT "sloveso$: "; sloveso$
+PRINT "podmet$: "; podmet$
+PRINT "vztazne$: "; vztazne$
+INPUT ; a$
+GOTO 200
+
+END
+'----------------------------------------------------------------
+'----------------------------------------------------------------
+'----------------------------------------------------------------
+                      
+
+' Na zaciatku nic nie je. Najprv tvorime retaze PAM$
+200 LET c = maxc 
+IF pan <> 1 THEN LET pam$(1) = CHR$(170) + CHR$(42) + CHR$(170)
+LET pan = 1
+
+GOSUB 670: GOSUB 560
+GOSUB 680: GOSUB 560: GOSUB 670: GOSUB 560
+GOSUB 690: GOSUB 560: GOSUB 700
+
+560     FOR i = 1 TO a
+        LET de$(i) = MID$(a$, i, 1)
+        LET de(i) = ASC(de$(i))
+        NEXT i
+
+        FOR i = 1 TO a
+        GOSUB 770
+        LET pam$(c) = pam$(c) + CHR$(de(i))
+        NEXT i
+
+        GOSUB 770
+        LET pam$(c) = pam$(c) + CHR$(170)
+        RETURN
+
+670 LET a$ = podmet$: LET a = podmet: RETURN
+680 LET a$ = sloveso$: LET a = sloveso: RETURN
+690 LET a$ = vztazne$: LET a = vztazne: RETURN
+
+700 ' oznacujeme koniec pyramid
+GOSUB 770
+LET pam$(c) = pam$(c) + CHR$(42)
+GOSUB 770
+LET pam$(c) = pam$(c) + CHR$(170)
+LET veta$(l) = "q"
+
+' Vrati sa a analyzuje dalsiu vetu 
+LET gorto = gorto + 1
+IF gorto < 4 THEN GOTO 3
+
+PRINT : PRINT "Vety rozobrate:": PRINT "X";
+FOR i = 1 TO c
+        PRINT pam$(i);
+NEXT i
+PRINT "X"
+PRINT : PRINT : INPUT ; a$
+'PRINT "C= "; c
+
+GOTO 790
+
+    END
+770 LET muelle = 10
+ IF LEN(pam$(c)) = muelle THEN LET c = c + 1: IF maxc < c THEN LET maxc = c
+    RETURN
+    END
+
+'----------------------------------------------------------------
+'----------------------------------------------------------------
+'----------------------------------------------------------------
+
+'                        ROZOBERANIE NOVEJ VETY
+
+' Najprv ideme na konec poslednej vety. Potom zoberieme smerom do lava vsetky retazce
+' tam obsiahnute. Potom povieme, ze kontext prveho retazca su ostatne. Potom
+' vyhladame v pam$ rovnake kontexty
+
+790 ' Ideme na zaciatku poslednej vety a zoberieme retazce
+LET zaccdvor = maxc: LET zacdvor = LEN(pam$(c))
+LET gh = 0
+LET riecnykamen = 0'aby sme neanalyzovali dvakrat ten isty kontext
+800 LET c = zaccdvor
+LET kurca = zacdvor
+' 7200 zoberie vetu smerom dolava. vrati kontextb$(cisktb)
+805 IF p <> 1 THEN GOSUB 7200 ELSE PRINT "805. Vsetko bolo analyzovane v externej kucere. END": LET p = 0: END
+IF poslednyretaz = 1 THEN LET poslednyretaz = 0: LET p = 1
+' zacb pamataju hodnotu konca vety. Bude treba v 815, aby sme isli na dalsiu.
+LET zacdvorb = kurca
+LET zaccdvorb = c
+IF kurca = 1 AND c = 1 THEN PRINT "805 KONEC ANALYZY": END
+
+810 'Povieme, ze prvy kontext nim nie je, ale bude kral$
+
+LET cisdvor = cisktb
+FOR i = 1 TO cisdvor
+LET dvor$(i) = kontextb$(i)
+NEXT i
+'PRINT cisdvor: INPUT "cisdvor"; a$: IF a$ = "q" THEN END
+
+'-----------------------------------------------------------
+
+'   GH zoberie si dalsi kral$
+815 LET gh = gh + 1
+IF peter > 0 THEN FOR i = 1 TO peter: LET drevo(i) = 0: NEXT i
+LET peter = 0
+LET destilat = 0
+
+IF gh > cisdvor AND riecnykamen = 0 THEN PRINT "Dalsi rez dvor. Dalsia veta. Dalsi rod. Dalsia kucera 2": LET zacdvor = zacdvorb: LET zaccdvor = zaccdvorb: LET gh = 0: GOTO 800
+IF gh > cisdvor AND riecnykamen = 1 THEN PRINT : PRINT : INPUT "riecnykamen =1. Kontext X bol uz rozobraty v A. Konec analyzy"; a$: LET riecnykamen = 0: END
+'PRINT "gh"; gh; "cisdvor "; cisdvor; "riecnykamen "; riecnykamen; "kral"; kral$
+LET kral$ = dvor$(gh)
+
+FOR i = 1 TO cisdvor
+LET kontext$(i) = dvor$(i)
+NEXT i
+
+'       Premeni dvor$ na kontext$.(Kontext$ ma menej prvkov ako Dvor$)
+
+LET pu = 0
+816 FOR i = 1 TO cisdvor
+    IF kontext$(i) = "" THEN GOTO 821
+    LET z = 0
+817     FOR j = 1 TO cisdvor
+        IF kontext$(i) = kral$ THEN LET pu = pu + 1: GOTO 822
+        IF kontext$(i) = kontext$(j) THEN LET z = z + 1: IF z = 2 THEN LET pu = pu + 1: LET z = z - 1: GOTO 822
+819     NEXT j
+820 NEXT i
+821 LET ciskt = cisdvor - pu:  GOTO 824
+
+822             FOR k = i TO cisdvor
+                LET kontext$(k) = kontext$(k + 1)
+                NEXT k
+
+                GOTO 816
+             
+824  'vyhladame v pam$ rovnake kontexty
+
+'Kurca = to, co bolo: zaciatok poslednej rozobratej vety
+'C     = to iste ako kurca
+      
+LET banac = maxc
+LET banakurca = LEN(pam$(maxc)) - 2: IF banakurca < 1 THEN LET banakurca = muelle + banakurca: LET banac = banac - 1
+
+
+825 LET kurca = banakurca
+LET c = banac
+LET brzda = 1
+IF poslednavola <> 1 THEN GOSUB 7200 ELSE LET poslednavola = 0: LET poslednyretaz = 0: GOTO 1000
+             ' vyberie si dalsiu vetu. vrati contextb$(cisktb) ktory mame porovnat s vzorom
+IF poslednyretaz = 1 THEN LET poslednavola = 1
+LET banac = c
+LET banakurca = kurca
+LET svedca = 0
+FOR i = 1 TO ciskt
+        FOR j = 1 TO cisktb
+        IF kontext$(i) = kontextb$(j) THEN LET svedca = svedca + 1:  GOTO 827
+        NEXT j
+827 NEXT i
+' pravidlo: ak kontext obsahuje rovnake prvky, veci su rovnake
+IF svedca = ciskt OR svedca = cisktb THEN GOTO 830: 'hladat rovnake pismena
+
+' ak kontexty su rovnake, vyberieme si dalsiu vetu
+
+
+GOTO 825
+
+830 ' mame rovnaky kontext akym je vzor.
+
+'ak zobrate vety su uplne rovnake, zoberie dalsiu
+IF cisdvor <> cisktb THEN GOTO 837
+
+
+837 ' vyhlada v kontexte "zvoleny", ktory je podobne ako kral$
+
+FOR i = 1 TO cisktb
+LET a(i) = 1
+NEXT i
+
+FOR j = 1 TO cisktb
+        FOR i = 1 TO ciskt
+        IF kontextb$(j) = kontext$(i) THEN LET a(j) = 0: GOTO 840
+        NEXT i
+840 NEXT j
+FOR i = 1 TO cisktb
+IF a(i) = 1 THEN GOSUB 845
+NEXT i
+IF peter > 1 THEN LET riecnykamen = 1
+GOTO 825
+
+845 '------------------------------------------------
+
+IF peter = 0 THEN LET peter = 1: LET zvoleny$(peter) = kral$:  LET kurca = zacdvorb: LET c = zaccdvorb: GOSUB 846
+FOR j = 1 TO peter
+        IF kontextb$(i) = zvoleny$(j) THEN RETURN
+NEXT j
+LET zvoleny = i: LET peter = peter + 1: LET zvoleny$(peter) = kontextb$(i): LET kurca = banakurca: LET c = banac: GOSUB 846
+RETURN
+ '---------------------------------------------------- 
+END 846 'pamata polohu zvoleny$  IF kurca = 1 AND c = 1 THEN LET kurca = 3 GOSUB 7100 IF zvoleny$(peter) = skumany$ THEN LET zvolc(peter) = c: LET zvolkurca(peter) = kurca - (LEN(skumany$) + priloha): GOSUB 848: RETURN
+LET zvolkurca(peter) = kurca - (LEN(skumany$) + priloha): LET zvolkurca(peter) = kurca - (LEN(skumany$) + priloha): GOSUB 848
+GOTO 846
+
+'----------------------------------------------------- 
+848 IF zvolkurca(peter) < 1 THEN LET zvolkurca(peter) = muelle + zvolkurca(peter): LET zvolc(peter) = zvolc(peter) - 1
+RETURN
+
+'-----------------------------------------------------  '---------------------------------                        920 ' vzhladom na to, ze sme pridali znak, relativne polohy vsetkych prvkov, nachadzajucich sa vzadu, sa menia. Treba umiestnit znovu vychadzajuce polohy zvoleny$
+
+' Drevo spocita pomlcky nachadzajuce sa v korenoch D
+LET drevo(u) = drevo(u) + 1
+
+IF zaccdvor > c THEN GOSUB 925
+IF c = zaccdvor AND zacdvor > kurca THEN GOSUB 925
+GOTO 926
+
+END
+925 LET zacdvor = zacdvor + 1: IF zacdvor = muelle + 1 THEN LET zacdvor = 1: LET zaccdvor = zaccdvor + 1
+RETURN
+END
+
+926 ' umiestni zacdvor a zaccdvor, ktore umiestnuju znovu kurca 
+ IF zaccdvorb > c THEN GOSUB 927 IF c = zaccdvorb AND zacdvorb > kurca THEN GOSUB 927 GOTO 929  END 927 LET zacdvorb = zacdvorb + 1: IF zacdvorb = muelle + 1 THEN LET zacdvorb = 1: LET zaccdvorb = zaccdvorb + 1 RETURN END 
+'umiestnuje znovu zvolc y zvolkurca, ktory umiestnuju znovu vsetky zvoleny$ v pam$
+929 FOR i = 1 TO peter
+IF zvolc(i) > c THEN GOSUB 930
+IF c = zvolc(i) AND zvolkurca(i) > kurca THEN GOSUB 930
+NEXT i
+GOTO 935
+END
+
+930 LET zvolkurca(i) = zvolkurca(i) + 1:  IF zvolkurca(i) = muelle + 1 THEN LET zvolkurca(i) = 1: LET zvolc(i) = zvolc(i) + 1
+RETURN
+END
+
+935 ' umiestnuje znovu banac y banakurca,
+ IF banac > c THEN GOSUB 936 IF c = banac AND banakurca > kurca THEN GOSUB 936 GOTO 940 END 936 LET banakurca = banakurca + 1: IF banakurca = muelle + 1 THEN LET banakurca = 1: LET banac = banac + 1
+'RETURN
+'END
+
+940 'zorganizujeme znovu pam$
+FOR i = c TO maxc
+        
+        IF i = maxc AND LEN(pam$(c)) < muelle THEN GOTO 950
+945     LET pam$(i + 1) = MID$(pam$(i), LEN(pam$(i)), 1) + pam$(i + 1)
+        IF i <> maxc THEN LET pam$(i) = MID$(pam$(i), 1, LEN(pam$(i)) - 1)
+       IF i = maxc AND LEN(pam$(i)) = muelle + 1 THEN LET maxc = maxc + 1: LET pam$(maxc) = "": GOTO 945
+
+950 NEXT i
+RETURN
+END
+  ' --------------------------------------------------------------
+ 1000 ' uz mame segmenty s rovnakym kontextom. Zacneme rozdelovat:  IF peter < 2 THEN GOTO 815  'zobrazime context 'PRINT "kral$"; kral$ 'PRINT "peter"; peter 'FOR i = 1 TO peter 'PRINT zvoleny$(i)
+'NEXT i
+
+'pravidlo 1
+
+LET asponjedno = 0
+LET p = 0
+LET rez = -1
+1005 FOR q = 1 TO peter
+           LET kurca = zvolkurca(q) + p: LET c = zvolc(q)
+           GOSUB 7700
+           LET c$ = b$
+           LET kurca = zvolkurca(1) + p: LET c = zvolc(1)
+           GOSUB 7700
+           IF c$ = CHR$(170) THEN GOTO 1150   'D
+           IF c$ <> b$ AND asponjedno = 0 THEN GOTO 1050    'B
+           IF c$ <> b$ AND asponjedno = 1 THEN GOTO 1010
+           
+      NEXT q
+LET rez = rez + 1
+LET asponjedno = 1
+LET p = p + 1
+GOTO 1005
+
+1010 'vyberie si koncovku
+  'predtym FOR q = 1 TO peter         LET tym = zvolkurca(q) - 1: LET ctym = zvolc(q): IF tym = 0 THEN LET tym = muelle: LET ctym = ctym - 1                  MID$(pam$(ctym), tym, 1) = CHR$(45)
+        LET kurca = zvolkurca(q) + rez
+        LET c = zvolc(q)
+        IF kurca > muelle THEN LET kurca = kurca - muelle: LET c = c + 1
+
+        LET tom = kurca + 1: LET ctom = c: IF tom = muelle + 1 THEN LET tom = 1: LET ctom = ctom + 1
+        IF kurca = muelle THEN LET pam$(c) = pam$(c) + CHR$(170): GOTO 1015
+        LET polovicaa$ = MID$(pam$(c), 1, kurca)
+        LET polovicab$ = MID$(pam$(c), kurca + 1, LEN(pam$(c)) - kurca)
+        LET pam$(c) = polovicaa$ + CHR$(170) + polovicab$
+1015    GOSUB 920
+NEXT q
+
+FOR i = 1 TO maxc
+PRINT pam$(i);
+NEXT i
+PRINT : PRINT
+LET p = 0: LET riecnykamen = 0: LET gh = 0: IF zacdvor = LEN(pam$(maxc)) AND zaccdvor = maxc THEN LET brzda = 0
+GOTO 800
+END
+
+
+1050 'B
+1100 'C. Pravidlo 3:
+LET asponjedno = 0
+LET p = 1
+LET rez = -1
+1105 FOR q = 1 TO peter
+           LET kurca = (zvolkurca(q) + LEN(zvoleny$(q))) - p: LET c = zvolc(q)
+           GOSUB 7750
+           LET c$ = b$
+           LET kurca = (zvolkurca(1) + LEN(zvoleny$(1))) - p: LET c = zvolc(1)
+           GOSUB 7750
+           IF c$ = CHR$(170) THEN GOTO 1150'D Pravidlo: R peq indiv. en r gran
+           IF c$ <> b$ AND asponjedno = 0 THEN GOTO 1150 'D
+           IF c$ <> b$ AND asponjedno = 1 THEN GOTO 1110   'cortar
+1107 NEXT q
+LET rez = rez + 1
+LET asponjedno = 1
+LET p = p + 1
+GOTO 1105
+END
+
+1110 'Vyberie si koncovku
+'predtym
+
+FOR q = 1 TO peter
+        LET tym = zvolkurca(q) - 1: LET ctym = zvolc(q): IF tym = 0 THEN LET tym = muelle: LET ctym = ctym - 1
+       
+        MID$(pam$(ctym), tym, 1) = CHR$(45)
+        LET kurca = (zvolkurca(q) + LEN(zvoleny$(q))) - (rez + 2)
+        LET c = zvolc(q)
+        IF kurca > muelle THEN LET kurca = kurca - muelle: LET c = c + 1
+        LET tom = kurca + 1: LET ctom = c: IF tom = muelle + 1 THEN LET tom = 1: LET ctom = ctom + 1
+        IF kurca = muelle THEN LET pam$(c) = pam$(c) + CHR$(170): GOTO 1115
+        LET polovicaa$ = MID$(pam$(c), 1, kurca)
+        LET polovicab$ = MID$(pam$(c), kurca + 1, LEN(pam$(c)) - kurca)
+        LET pam$(c) = polovicaa$ + CHR$(170) + polovicab$: ' PRINT "REZ "; rez
+1115    GOSUB 920
+NEXT q
+
+FOR i = 1 TO maxc
+PRINT pam$(i);
+NEXT i
+PRINT : PRINT
+GOTO 800
+
+END
+
+1150 ' D, E. PRAVIDLO mensieho
+
+FOR q = 1 TO peter
+FOR u = 1 TO peter
+       ' PRINT zvoleny$(u); " "; zvoleny$(q)
+        IF LEN(zvoleny$(q)) >= LEN(zvoleny$(u)) THEN GOTO 1170
+        LET p = 1
+        LET pp = 0
+        LET pocpom = 0
+1160       LET kurca = (zvolkurca(u) + LEN(zvoleny$(u)) + drevo(u)) - p: LET c = zvolc(u)
+           LET zobratsipomlcku = 1: GOSUB 7750: LET zobratsipomlcku = 0
+           LET c$ = b$
+           LET kurca = (zvolkurca(q) + LEN(zvoleny$(q)) + drevo(q)) - p: LET c = zvolc(q)
+           LET zobratsipomlcku = 1: GOSUB 7750: LET zobratsipomlcku = 0
+           'print  c$; " CB "; b$; : INPUT ; a$
+           IF pp = 2 THEN LET p = p + 1: LET pp = 0
+           IF b$ = CHR$(170) THEN GOTO 1200 'cortar
+           IF c$ <> b$ THEN GOTO 1170
+        LET p = p + 1
+        IF p <= LEN(zvoleny$(q)) + drevo(q) + 1 THEN GOTO 1160
+1170 NEXT u
+NEXT q
+FOR i = 1 TO maxc
+PRINT pam$(i);
+NEXT i
+PRINT : PRINT : INPUT ; a$
+GOTO 815
+
+END
+
+1200 ' vyberie si prefix
+        
+        LET kurca = (zvolkurca(u) + LEN(zvoleny$(u)) + drevo(u)) - (LEN(zvoleny$(q)) + drevo(q) + 1)
+        LET c = zvolc(u)
+        
+        IF kurca > muelle THEN LET kurca = kurca - muelle: LET c = c + 1
+        ' PRINT kurca; " "; c; " pocpom "; pocpom
+        LET tom = kurca + 1: LET ctom = c: IF tom = muelle + 1 THEN LET tom = 1: LET ctom = ctom + 1
+        IF kurca = muelle THEN LET pam$(c) = pam$(c) + CHR$(45): GOTO 1115
+       
+        LET polovicaa$ = MID$(pam$(c), 1, kurca)
+        LET polovicab$ = MID$(pam$(c), kurca + 1, LEN(pam$(c)) - kurca)
+        LET pam$(c) = polovicaa$ + CHR$(45) + polovicab$: ' PRINT "REZ "; rez
+        GOSUB 920
+
+
+FOR i = 1 TO maxc
+PRINT pam$(i);
+NEXT i
+PRINT : PRINT : INPUT ; a$
+
+GOTO 1170
+END
+
+
+'----------------------------------------------------------------
+                       
+
+'-----------------------------GOSUBS-----------------------------
+
+END 7000 ' hlada smerom do lava ak zadas KURCA a C IF MID$(pam$(c), kurca, 1) <> CHR$(170) THEN PRINT "Kurca je zle umiestnena (7000)": INPUT ; a$
+
+7005        'vynecha medzeru na ktorej je kurca. Posle kurca nazad
+
+IF poslednyretaz = 1 THEN PRINT kurca; "Kurca cero": RETURN
+
+'PRINT c; " CK "; kurca
+IF MID$(pam$(c), kurca, 1) = CHR$(170) THEN GOSUB 7050: LET kurca = kurca - 1: GOTO 7005
+
+        'zoberie si pismenka
+
+LET konskumany = kurca
+LET skumany$ = ""
+LET priloha = 0
+'zobratsipomlcku = 1 zoberie pomlcku
+7010 IF zobratsipomlcku = 0 AND MID$(pam$(c), kurca, 1) = CHR$(znak) THEN LET priloha = priloha + 1: GOTO 7020
+LET skumany$ = MID$(pam$(c), kurca, 1) + skumany$
+7020 GOSUB 7050
+LET kurca = kurca - 1
+IF MID$(pam$(c), kurca, 1) = CHR$(170) THEN LET zacskumany = kurca + 1: RETURN
+                'RETurn z hora vrati skumany$ alebo cely maly retacec
+                'kurca je vo bielom pred slovom
+GOTO 7010
+
+END
+7050 ' skoci do predchadzajuceho retazce pam$
+
+
+IF kurca = 1 THEN LET c = c - 1: LET kurca = LEN(pam$(c)) + 1
+RETURN
+
+END
+7100 ' hlada smerom do prava ak zadas KURCA a C
+
+IF MID$(pam$(c), kurca, 1) <> CHR$(170) THEN PRINT "kurca je zle umiestnena (7100)"
+
+7105         'vynecha medzeru na ktorej je kurca. Posle kurca dalej
+IF MID$(pam$(c), kurca, 1) = CHR$(170) THEN GOSUB 7150: LET kurca = kurca + 1: GOTO 7105
+
+        'zoberie pismenka
+
+LET zacskumany = kurca
+LET skumany$ = ""
+LET priloha = 0
+'zobratsipomlcku = 1 zoberie pomlcku
+7110 IF zobratsipomlcku = 0 AND MID$(pam$(c), kurca, 1) = CHR$(znak) THEN LET priloha = priloha + 1: GOTO 7120
+LET skumany$ = skumany$ + MID$(pam$(c), kurca, 1)
+7120 GOSUB 7150
+LET kurca = kurca + 1
+IF MID$(pam$(c), kurca, 1) = CHR$(170) THEN LET konskumany = kurca - 1: RETURN
+                'RETurn z hora vrati skumany$ alebo cely maly retacec
+                'kurca je vo bielom za slovom
+GOTO 7110
+END
+7150 ' skoci do nasledujuceho retazca pam$
+
+IF kurca = LEN(pam$(c)) AND c = maxc THEN PRINT " Sme analyzovali az do poslednej retazi. Teraz , co? (7150)": END
+IF kurca >= LEN(pam$(c)) THEN LET c = c + 1: LET kurca = 0
+RETURN
+ '---------------------------------
+ 7200 ' vytvara vetu smerom dolava
+
+LET cisktb = 0
+7210 GOSUB 7000
+LET cisktb = cisktb + 1
+IF skumany$ = CHR$(42) THEN LET brzda = brzda + 1: LET cisktb = cisktb - 1
+IF kurca = 1 AND c = 1 THEN LET poslednyretaz = 1: LET brzda = 0:  GOSUB 7220: RETURN
+IF brzda = 2 THEN LET brzda = 0: GOSUB 7220:  RETURN
+LET kontextc$(cisktb) = skumany$
+GOTO 7210
+7220 ' polozi vetu naopak
+LET pi = cisktb + 1
+FOR pu = 1 TO cisktb
+       LET pi = pi - 1
+       LET kontextb$(pi) = kontextc$(pu)
+NEXT pu
+RETURN
+
+'----------------------------------
+
+7300 ' vytvara vetu smerom doprava LET cisktb = 0 7310 GOSUB 7100 LET cisktb = cisktb + 1 IF skumany$ = CHR$(42) THEN LET brzda = brzda + 1: LET cisktb = cisktb - 1 IF brzda = 2 THEN LET brzda = 0: RETURN LET kontextb$(cisktb) = skumany$
+GOTO 7310
+
+7400 '-------------------------------------- marcopolo
+
+IF marcopolo = 825 THEN LET circlo = 1: LET kurca = zacdvor: LET c = zaccdvor:   GOTO 815 END  7500 LET polovicaa$ = MID$(pam$(c), 1, kurca) LET polovicab$ = MID$(pam$(c), kurca + 1, LEN(pam$(c)) - kurca)
+LET polovicaa$ = polovicaa$ + CHR$(znak)
+'let polovicab$=polovicab$-mid$(polovicab$,len(polovica$(b),1)
+
+'FOR i = c TO maxc + 1
+        
+7600 ' ----------------------------------------- pracovnik$
+
+LET parcovnicka$ = ""
+FOR T = 1 TO LEN(pracovnik$)
+IF MID$(pracovnik$, T, 1) <> CHR$(znak) THEN LET pracovnicka$ = pracovnicka$ + MID$(pracovnik$, T, 1)
+NEXT T
+LET pracovnik$ = pracovnicka$
+RETURN
+
+7700 '------------------------- vyberie si pismenko smerom doprava +
+IF kurca > muelle THEN LET kurca = kurca - muelle: LET c = c + 1
+LET b$ = MID$(pam$(c), kurca, 1)
+IF zobratsipomlcku = 1 AND b$ = CHR$(45) THEN LET kurca = kurca + 1: LET pocpom = pocpom + 1: GOTO 7700
+RETURN
+
+7750 '------------------------- zoberie si pismenko smerom dolava -
+
+IF kurca < 1 THEN LET kurca = muelle + kurca: LET c = c - 1
+IF kurca > muelle THEN LET kurca = kurca - muelle: LET c = c + 1
+LET b$ = MID$(pam$(c), kurca, 1)
+IF zobratsipomlcku = 1 AND b$ = CHR$(45) THEN LET kurca = kurca - 1: LET pocpom = pocpom + 1: LET pp = pp + 1: GOTO 7750
+RETURN
+
+
